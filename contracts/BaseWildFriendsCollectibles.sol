@@ -4,11 +4,14 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import { StringUtils } from "./libraries/StringUtils.sol";
 
 contract BaseWildFriendsCollectibles is ERC1155, ERC2981, Ownable {
     constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
 
     bool public mintState;
+
+    string _uri;
 
     mapping(address => bool) public controllers;
 
@@ -36,7 +39,7 @@ contract BaseWildFriendsCollectibles is ERC1155, ERC2981, Ownable {
 
     //TODO: Do I need to override function uri?
     function setURI(string memory newuri) public onlyOwner {
-        _setURI(newuri);
+        _uri = newuri;
     }
 
     /**
@@ -94,6 +97,11 @@ contract BaseWildFriendsCollectibles is ERC1155, ERC2981, Ownable {
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function uri(uint256 tokenId) public view virtual override returns (string memory) {
+        string memory token = StringUtils.toString(tokenId);
+        return bytes(_uri).length > 0 ? string(abi.encodePacked(_uri, token, ".json")) : "";
     }
 
     //----- END -----//
