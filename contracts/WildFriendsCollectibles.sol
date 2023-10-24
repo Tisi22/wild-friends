@@ -17,18 +17,19 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     string private constant SIGNATURE_VERSION = "1";
 
     //Base ERC1155 smart contract
-    BaseWildFriendsCollectibles immutable base;
+    BaseWildFriendsCollectibles public immutable base;
 
     struct NFTVoucher {
-    uint256 tokenId;
-    bytes signature;
+        uint256 tokenId;
+        bytes signature;
     }
 
 
     constructor(address minter, BaseWildFriendsCollectibles _base, address initialOwner) 
         EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) Ownable(initialOwner){
-        grantRole(MINTER_ROLE, minter);
         base = _base;
+        _grantRole(MINTER_ROLE, minter);
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
     /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
@@ -43,6 +44,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
 
         base.mint(redeemer, voucher.tokenId);
     }
+
 
     function _hash(NFTVoucher calldata voucher) public view returns (bytes32) {
     return _hashTypedDataV4(keccak256(abi.encode(
@@ -65,7 +67,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     /// @notice Verifies the signature for a given NFTVoucher, returning the address of the signer.
     /// @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
     /// @param voucher An NFTVoucher describing an unminted NFT.
-    function _verify(NFTVoucher calldata voucher) internal view returns (address) {
+    function _verify(NFTVoucher calldata voucher) public view returns (address) {
         bytes32 digest = _hash(voucher);
         return ECDSA.recover(digest, voucher.signature);
     }
