@@ -3,39 +3,124 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import { StringUtils } from "./libraries/StringUtils.sol";
 
-contract WildFriendsMain is ERC1155, Ownable {
+contract WildFriendsMain is ERC1155, ERC2981, Ownable {
 
     //Mapping for the prices token Id => Price with the 18 decimals
-    mapping (uint256 => uint256) prices;
+    mapping (uint256 => uint256) public prices;
 
-    constructor(address initialOwner) ERC1155("") Ownable(initialOwner) {}
+    string _uri;
 
-    function setURI(string memory newuri) public onlyOwner {
-        _setURI(newuri);
+    address public sanctuaryAddr;
+
+    mapping(uint256 => bool) activeIds;
+
+    // Reentrancy guard state variable
+    bool private locked;
+
+    modifier noReentrant() {
+        require(!locked, "No reentrancy");
+        locked = true;
+        _;
+        locked = false;
     }
+
+    constructor(address initialOwner, address sanctuary) ERC1155("") Ownable(initialOwner) {
+        sanctuaryAddr = sanctuary;
+    }
+
+    //----- SET FUNCTIONS -----//
 
     function SetPrice(uint256 id, uint256 _price) public onlyOwner {
         prices[id] = _price;
     }
 
-    function mint(address account, uint256 id, uint256 amount) payable public {
-
-        (bool val, uint256 num) = Math.tryMul(prices[id], amount);
-
-        require(val, "Amount not valid");
-        require(msg.value >= num , "Not enough matic sent");
-
-        _mint(account, id, amount, "");
+    function setURI(string memory newuri) public onlyOwner {
+        _uri = newuri;
     }
 
+    /**
+    * @dev Activate/diactivate an id
+    */
+    function setAciveId(uint256 id, bool val) external onlyOwner {
+        activeIds[id] = val;
+    }
 
-    //Podemos hacer manualmente enviar los 30 del airdrop en luar de que ellos tengan que pagar los fees.
-    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts)
+    /**
+     * @dev Sets the royalty information that all ids in this contract will default to.
+     *
+     * Requirements:
+     *
+     * - `receiver` cannot be the zero address.
+     * - `feeNumerator` cannot be greater than the fee denominator, if it is 1000 -> 10%.
+     */
+    function setFeeNum(address receiver, uint96 feeNumerator) public onlyOwner {
+        _setDefaultRoyalty(receiver, feeNumerator);
+    }
+
+    function SetSanctuaryAddr(address sanctuary) public onlyOwner {
+        sanctuaryAddr = sanctuary;
+    }
+
+    //----- END -----//
+
+    //----- MINT -----//
+
+    function mint(address account, uint256 id) public payable noReentrant {
+        require(msg.value >= prices[id], "Not enough value sent");
+        require(activeIds[id], "Token Id minting is not active");
+
+        (bool sent, ) = sanctuaryAddr.call{value: msg.value}("");
+        require(sent, "Failed to send Ether");
+
+        _mint(account, id, 1, "");
+    }
+  
+
+    function mintAirdrop(address[] memory to, uint256[] memory ids, uint256[] memory amounts)
         public
         onlyOwner
     {
-        _mintBatch(to, ids, amounts, "");
+        require(to.length == ids.length && ids.length == amounts.length, "Please check the args length");
+
+        for (uint i = 0; i < to.length; i++)
+        {
+            _mint(to[i], ids[i], amounts[i], "");
+        }
     }
+
+    //-----END-----//
+
+    //----- OVERRIDE FUNCTIONS -----//
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155, ERC2981)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    function uri(uint256 tokenId) public view virtual override returns (string memory) {
+        string memory token = StringUtils.toString(tokenId);
+        return bytes(_uri).length > 0 ? string(abi.encodePacked(_uri, token, ".json")) : "";
+    }
+
+    //----- END -----//
+
+    /**
+     * @dev Allows the owner to withdraw Ether from the contract.
+     */
+    function withdraw() public onlyOwner {
+        uint balance = address(this).balance;
+        require(balance > 0, "No Ether left to withdraw");
+
+        (bool sent, ) = msg.sender.call{value: balance}("");
+        require(sent, "Failed to send Ether");
+    }
+
 }

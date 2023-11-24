@@ -37,7 +37,6 @@ contract BaseWildFriendsCollectibles is ERC1155, ERC2981, Ownable {
 
     //----- SET FUNCTIONS -----//
 
-    //TODO: Do I need to override function uri?
     function setURI(string memory newuri) public onlyOwner {
         _uri = newuri;
     }
@@ -87,7 +86,7 @@ contract BaseWildFriendsCollectibles is ERC1155, ERC2981, Ownable {
 
     //----- END -----//
 
-        //----- OVERRIDE FUNCTIONS -----//
+    //----- OVERRIDE FUNCTIONS -----//
 
     function supportsInterface(bytes4 interfaceId)
         public
