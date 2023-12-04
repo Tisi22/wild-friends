@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PriceShare is Ownable{
 
-    address public sanctuary;
+    address payable public sanctuary;
 
-    constructor(address initialOwner, address _sanctuary) Ownable(initialOwner) {
+    constructor(address initialOwner, address payable _sanctuary) Ownable(initialOwner) {
        sanctuary = _sanctuary;
     }
 
-    function setSanctuary(address _sanctuary) public onlyOwner {
+    function setSanctuary(address payable _sanctuary) public onlyOwner {
         sanctuary = _sanctuary;
     }
 
@@ -23,8 +23,8 @@ contract PriceShare is Ownable{
         uint sanctuaryBlance = balance - ownerBalance;
         address _owner = owner();
 
-        (bool sentSanctuary, ) = sanctuary.call{value: sanctuaryBlance}("");
-        require(sentSanctuary, "Failed to send Ether to sanctuary");
+        bool sentS = sanctuary.send(sanctuaryBlance);
+        require(sentS, "Failed to send Ether to sanctuary");
 
         (bool sentOwner, ) = _owner.call{value: ownerBalance}("");
         require(sentOwner, "Failed to send Ether to owner");

@@ -19,15 +19,21 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     //Base ERC1155 smart contract
     BaseWildFriendsCollectibles public immutable base;
 
+    //Mapping with the prices of the NFTs (With 10^18)
+    mapping (uint256 => uint256) price;
+
+    address payable public sanctuaryAddr;
+
     struct NFTVoucher {
         uint256 tokenId;
         bytes signature;
     }
 
 
-    constructor(address minter, BaseWildFriendsCollectibles _base, address initialOwner) 
+    constructor(address minter, BaseWildFriendsCollectibles _base, address initialOwner, address payable sanctuary) 
         EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) Ownable(initialOwner){
         base = _base;
+        sanctuaryAddr = sanctuary;
         _grantRole(MINTER_ROLE, minter);
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
@@ -35,7 +41,8 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     /// @notice Redeems an NFTVoucher for an actual NFT, creating it in the process.
     /// @param redeemer The address of the account which will receive the NFT upon success.
     /// @param voucher A signed NFTVoucher with the tokenId tp mint.
-    function redeemNFTCollectible(address redeemer, NFTVoucher calldata voucher) public nonReentrant {
+    function redeemNFTCollectible(address redeemer, NFTVoucher calldata voucher) public payable nonReentrant {
+        require(msg.value >= price[voucher.tokenId], "Not enough value sent" );
         // make sure signature is valid and get the address of the signer
         address signer = _verify(voucher);
 
@@ -43,14 +50,18 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
         require(hasRole(MINTER_ROLE, signer), "Signature invalid or unauthorized");
 
         base.mint(redeemer, voucher.tokenId);
+
+        bool sent = sanctuaryAddr.send(msg.value);
+        require(sent, "Failed to send Ether");
+
     }
 
 
     function _hash(NFTVoucher calldata voucher) public view returns (bytes32) {
-    return _hashTypedDataV4(keccak256(abi.encode(
-        keccak256("NFTVoucher(uint256 tokenId)"),
-        voucher.tokenId
-    )));
+        return _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("NFTVoucher(uint256 tokenId)"),
+            voucher.tokenId
+        )));
     }
 
     /// @notice Returns the chain id of the current blockchain.
@@ -70,6 +81,14 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     function _verify(NFTVoucher calldata voucher) public view returns (address) {
         bytes32 digest = _hash(voucher);
         return ECDSA.recover(digest, voucher.signature);
+    }
+
+    /// @notice Set the prices for the NFTs
+    /// @dev Call only by Owner.
+    /// @param id Token Id.
+    /// @param _price price with decimals (10^18)
+    function setPrice(uint256 id, uint256 _price) public onlyOwner {
+        price[id] = _price;
     }
 
     // Function to receive Matic. msg.data must be empty

@@ -4,7 +4,7 @@ const { LazyMinter } = require('../lib')
 
 
 async function deploy() {
-    const [owner, minter, redeemer, _] = await ethers.getSigners();
+    const [owner, minter, redeemer, sanctuary, _] = await ethers.getSigners();
 
     const Base = await ethers.getContractFactory("BaseWildFriendsCollectibles");
     const base = await Base.deploy(owner.address);
@@ -13,9 +13,10 @@ async function deploy() {
 
     const minterAddress = await minter.address;
     const ownerAddress = await owner.address;
+    const sanctuaryAddress = await sanctuary.address;
 
     const Collectibles = await ethers.getContractFactory("WildFriendsCollectibles");
-    const contract = await Collectibles.deploy(minterAddress, basenftAddress, ownerAddress);
+    const contract = await Collectibles.deploy(minterAddress, basenftAddress, ownerAddress, sanctuaryAddress);
     const collectiblesAddress = await contract.address;
     console.log("Collectibles contract deployed at: ", collectiblesAddress);
 
@@ -25,6 +26,7 @@ async function deploy() {
         minter,
         minterAddress,
         redeemer,
+        sanctuaryAddress,
         base,
         basenftAddress,
         contract,
@@ -60,7 +62,7 @@ describe("Deployment & Setup", async function() {
 });
 
 describe("Minting using voucher", function () {
-    it("Should mint an NFT using a valid voucher", async function () {
+    it("Should mint an NFT using a valid voucher1", async function () {
       const {owner, ownerAddress, minter, minterAddress, redeemer, base, basenftAddress, contract, collectiblesAddress} = await deploy()
       const tokenId = 1;
       await base.setMintState(true);
@@ -86,7 +88,7 @@ describe("Minting using voucher", function () {
       expect(await base.balanceOf(redeemerAddress, tokenId)).to.equal(1);
     });
 
-    it("Should mint an NFT using a valid voucher", async function () {
+    it("Should mint an NFT using a valid voucher2", async function () {
       const {owner, ownerAddress, minter, minterAddress, redeemer, base, basenftAddress, contract, collectiblesAddress} = await deploy()
       const tokenId = 1;
       await base.setMintState(true);
@@ -103,7 +105,7 @@ describe("Minting using voucher", function () {
       
       await base.setURI("aaaaaaaaaaaa");
 
-      await contract.redeemNFTCollectible(redeemerAddress, voucher);
+      await contract.redeemNFTCollectible(redeemerAddress, voucher, { value: ethers.utils.parseUnits("0", "ether") });
 
       const tokenUri = await base.uri(1);
 
@@ -127,8 +129,33 @@ describe("Minting using voucher", function () {
 
       await base.addController(collectiblesAddress);
 
-      await expect(contract.redeemNFTCollectible(redeemerAddress, voucher)).to.be.revertedWith("Signature invalid or unauthorized");
+      await expect(contract.redeemNFTCollectible(redeemerAddress, voucher, { value: ethers.utils.parseUnits("0", "ether") })).to.be.revertedWith("Signature invalid or unauthorized");
     });
+});
+
+describe("Minting using voucher with payment", function () {
+  it("Should mint an NFT using a valid voucher and value tranfer", async function () {
+    const {owner, ownerAddress, minter, minterAddress, sanctuaryAddress, redeemer, base, basenftAddress, contract, collectiblesAddress} = await deploy()
+    const tokenId = 1;
+    await base.setMintState(true);
+    await base.setAciveId(tokenId, true);
+
+    const lazyMinter = new LazyMinter({contract, signer: minter })
+    const voucher = await lazyMinter.createVoucher(1)
+
+    console.log(voucher);
+
+    const redeemerAddress = await redeemer.address;
+
+    await base.addController(collectiblesAddress);
+    
+    await contract.setPrice(1, ethers.utils.parseUnits("0.01", "ether"));
+
+    await contract.redeemNFTCollectible(redeemerAddress, voucher, { value: ethers.utils.parseUnits("0.01", "ether") });
+    expect(await base.balanceOf(redeemerAddress, tokenId)).to.equal(1);
+  });
+
+ 
 });
 
 

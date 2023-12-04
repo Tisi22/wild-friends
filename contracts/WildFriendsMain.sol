@@ -13,7 +13,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
 
     string _uri;
 
-    address public sanctuaryAddr;
+    address payable public sanctuaryAddr;
 
     mapping(uint256 => bool) activeIds;
 
@@ -27,7 +27,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         locked = false;
     }
 
-    constructor(address initialOwner, address sanctuary) ERC1155("") Ownable(initialOwner) {
+    constructor(address initialOwner, address payable sanctuary) ERC1155("") Ownable(initialOwner) {
         sanctuaryAddr = sanctuary;
     }
 
@@ -60,7 +60,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         _setDefaultRoyalty(receiver, feeNumerator);
     }
 
-    function SetSanctuaryAddr(address sanctuary) public onlyOwner {
+    function SetSanctuaryAddr(address payable sanctuary) public onlyOwner {
         sanctuaryAddr = sanctuary;
     }
 
@@ -72,7 +72,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         require(msg.value >= prices[id], "Not enough value sent");
         require(activeIds[id], "Token Id minting is not active");
 
-        (bool sent, ) = sanctuaryAddr.call{value: msg.value}("");
+        bool sent = sanctuaryAddr.send(msg.value);
         require(sent, "Failed to send Ether");
 
         _mint(account, id, 1, "");
