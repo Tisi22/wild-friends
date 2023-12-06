@@ -49,10 +49,11 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
         // make sure that the signer is authorized to mint NFTs
         require(hasRole(MINTER_ROLE, signer), "Signature invalid or unauthorized");
 
-        base.mint(redeemer, voucher.tokenId);
+        // Using call to send calue
+        (bool sent, ) = payable(sanctuaryAddr).call{value: msg.value}("");
+        require(sent, "Failed to send value");
 
-        bool sent = payable(sanctuaryAddr).send(msg.value);
-        require(sent, "Failed to send Ether");
+        base.mint(redeemer, voucher.tokenId);
 
     }
 

@@ -79,8 +79,9 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         require(msg.value >= prices[id], "Not enough value sent");
         require(activeIds[id], "Token Id minting is not active");
 
-        bool sent = payable(sanctuaryAddr).send(msg.value);
-        require(sent, "Failed to send Ether");
+        // Using call to send calue
+        (bool sent, ) = payable(sanctuaryAddr).call{value: msg.value}("");
+        require(sent, "Failed to send value");
 
         _mint(account, id, 1, "");
     }

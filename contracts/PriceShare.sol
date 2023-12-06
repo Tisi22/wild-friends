@@ -7,6 +7,16 @@ contract PriceShare is Ownable{
 
     address public sanctuary;
 
+    // Reentrancy guard state variable
+    bool private locked;
+
+    modifier noReentrant() {
+        require(!locked, "No reentrancy");
+        locked = true;
+        _;
+        locked = false;
+    }
+
     constructor(address initialOwner, address _sanctuary) Ownable(initialOwner) {
        sanctuary = _sanctuary;
     }
@@ -15,17 +25,18 @@ contract PriceShare is Ownable{
         sanctuary = _sanctuary;
     }
 
-    function share() private {
+    function share() private noReentrant {
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 
         address _owner = owner();
 
-        bool sentS = payable(sanctuary).send(balance/2);
-        require(sentS, "Failed to send Ether to sanctuary");
+        (bool sentS, ) = payable(sanctuary).call{value: balance/2}("");
+        require(sentS, "Failed to send value to sanctuary");
 
-        bool sentOwner = payable(_owner).send(balance/2);
-        require(sentOwner, "Failed to send Ether to owner");
+        (bool sentO, ) = payable(_owner).call{value: balance/2}("");
+        require(sentO, "Failed to send value to owner");
+
     }
 
     /**
