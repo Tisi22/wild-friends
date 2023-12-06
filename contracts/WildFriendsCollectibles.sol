@@ -22,7 +22,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     //Mapping with the prices of the NFTs (With 10^18)
     mapping (uint256 => uint256) price;
 
-    address payable public sanctuaryAddr;
+    address public sanctuaryAddr;
 
     struct NFTVoucher {
         uint256 tokenId;
@@ -30,7 +30,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     }
 
 
-    constructor(address minter, BaseWildFriendsCollectibles _base, address initialOwner, address payable sanctuary) 
+    constructor(address minter, BaseWildFriendsCollectibles _base, address initialOwner, address sanctuary) 
         EIP712(SIGNING_DOMAIN, SIGNATURE_VERSION) Ownable(initialOwner){
         base = _base;
         sanctuaryAddr = sanctuary;
@@ -51,7 +51,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
 
         base.mint(redeemer, voucher.tokenId);
 
-        bool sent = sanctuaryAddr.send(msg.value);
+        bool sent = payable(sanctuaryAddr).send(msg.value);
         require(sent, "Failed to send Ether");
 
     }
@@ -91,14 +91,22 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
         price[id] = _price;
     }
 
+    /// @notice Set the address of the Sanctuary
+    /// @dev Call only by Owner.
+    /// @param sanctuary The new address
+    function SetSanctuaryAddr(address sanctuary) public onlyOwner {
+        sanctuaryAddr = sanctuary;
+    }
+
+    function withdraw() public onlyOwner {
+        payable(sanctuaryAddr).transfer(address(this).balance);
+    }
+
     // Function to receive Matic. msg.data must be empty
     receive() external payable {}
 
     // Fallback function is called when msg.data is not empty
     fallback() external payable {}
 
-    function withdraw() public onlyOwner {
-        payable(msg.sender).transfer(address(this).balance);
-    }
 
 }

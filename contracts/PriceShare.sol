@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract PriceShare is Ownable{
 
-    address payable public sanctuary;
+    address public sanctuary;
 
-    constructor(address initialOwner, address payable _sanctuary) Ownable(initialOwner) {
+    constructor(address initialOwner, address _sanctuary) Ownable(initialOwner) {
        sanctuary = _sanctuary;
     }
 
-    function setSanctuary(address payable _sanctuary) public onlyOwner {
+    function setSanctuary(address _sanctuary) public onlyOwner {
         sanctuary = _sanctuary;
     }
 
@@ -19,15 +19,24 @@ contract PriceShare is Ownable{
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 
-        uint ownerBalance = balance/20;
-        uint sanctuaryBlance = balance - ownerBalance;
         address _owner = owner();
 
-        bool sentS = sanctuary.send(sanctuaryBlance);
+        bool sentS = payable(sanctuary).send(balance/2);
         require(sentS, "Failed to send Ether to sanctuary");
 
-        (bool sentOwner, ) = _owner.call{value: ownerBalance}("");
+        bool sentOwner = payable(_owner).send(balance/2);
         require(sentOwner, "Failed to send Ether to owner");
+    }
+
+    /**
+     * @dev Allows the owner to withdraw Ether from the contract.
+    */
+    function withdraw() public onlyOwner {
+        uint balance = address(this).balance;
+        require(balance > 0, "No Ether left to withdraw");
+
+        (bool sent, ) = msg.sender.call{value: balance}("");
+        require(sent, "Failed to send Ether");
     }
 
     // Function to receive Matic. msg.data must be empty

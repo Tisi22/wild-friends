@@ -13,7 +13,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
 
     string _uri;
 
-    address payable public sanctuaryAddr;
+    address public sanctuaryAddr;
 
     mapping(uint256 => bool) activeIds;
 
@@ -27,7 +27,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         locked = false;
     }
 
-    constructor(address initialOwner, address payable sanctuary) ERC1155("") Ownable(initialOwner) {
+    constructor(address initialOwner, address sanctuary) ERC1155("") Ownable(initialOwner) {
         sanctuaryAddr = sanctuary;
     }
 
@@ -60,7 +60,10 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         _setDefaultRoyalty(receiver, feeNumerator);
     }
 
-    function SetSanctuaryAddr(address payable sanctuary) public onlyOwner {
+    /// @notice Set the address of the Sanctuary
+    /// @dev Call only by Owner.
+    /// @param sanctuary The new address
+    function SetSanctuaryAddr(address sanctuary) public onlyOwner {
         sanctuaryAddr = sanctuary;
     }
 
@@ -68,17 +71,26 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
 
     //----- MINT -----//
 
+
+    /// @notice Mints an NFT
+    /// @param account account to send the NFT
+    /// @param id NFT´s id to send
     function mint(address account, uint256 id) public payable noReentrant {
         require(msg.value >= prices[id], "Not enough value sent");
         require(activeIds[id], "Token Id minting is not active");
 
-        bool sent = sanctuaryAddr.send(msg.value);
+        bool sent = payable(sanctuaryAddr).send(msg.value);
         require(sent, "Failed to send Ether");
 
         _mint(account, id, 1, "");
     }
   
 
+    /// @notice MInt NFTs for the Airdrop.
+    /// @dev It can be only calledby the owner
+    /// @param to Array of addresses to send the NFTs
+    /// @param ids Ids to be sent
+    /// @param amounts Amount to be sent
     function mintAirdrop(address[] memory to, uint256[] memory ids, uint256[] memory amounts)
         public
         onlyOwner
@@ -113,13 +125,13 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
     //----- END -----//
 
     /**
-     * @dev Allows the owner to withdraw Ether from the contract.
+     * @dev Allows the owner to withdraw Ether from the contract to the Sanctuary
      */
     function withdraw() public onlyOwner {
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 
-        (bool sent, ) = msg.sender.call{value: balance}("");
+        bool sent = payable(sanctuaryAddr).send(balance);
         require(sent, "Failed to send Ether");
     }
 
