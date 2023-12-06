@@ -2,20 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract PriceShare is Ownable{
+contract PriceShare is Ownable, ReentrancyGuard{
 
     address public sanctuary;
-
-    // Reentrancy guard state variable
-    bool private locked;
-
-    modifier noReentrant() {
-        require(!locked, "No reentrancy");
-        locked = true;
-        _;
-        locked = false;
-    }
 
     constructor(address initialOwner, address _sanctuary) Ownable(initialOwner) {
        sanctuary = _sanctuary;
@@ -25,7 +16,7 @@ contract PriceShare is Ownable{
         sanctuary = _sanctuary;
     }
 
-    function share() private noReentrant {
+    function share() private nonReentrant {
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 

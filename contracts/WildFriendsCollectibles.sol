@@ -100,7 +100,12 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
     }
 
     function withdraw() public onlyOwner {
-        payable(sanctuaryAddr).transfer(address(this).balance);
+        uint balance = address(this).balance;
+        require(balance > 0, "No Ether left to withdraw");
+
+        // Using call to send calue
+        (bool sent, ) = payable(sanctuaryAddr).call{value: balance}("");
+        require(sent, "Failed to send value");
     }
 
     // Function to receive Matic. msg.data must be empty

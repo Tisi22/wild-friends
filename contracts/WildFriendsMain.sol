@@ -4,9 +4,10 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { StringUtils } from "./libraries/StringUtils.sol";
 
-contract WildFriendsMain is ERC1155, ERC2981, Ownable {
+contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
 
     //Mapping for the prices token Id => Price with the 18 decimals
     mapping (uint256 => uint256) public prices;
@@ -16,16 +17,6 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
     address public sanctuaryAddr;
 
     mapping(uint256 => bool) activeIds;
-
-    // Reentrancy guard state variable
-    bool private locked;
-
-    modifier noReentrant() {
-        require(!locked, "No reentrancy");
-        locked = true;
-        _;
-        locked = false;
-    }
 
     constructor(address initialOwner, address sanctuary) ERC1155("") Ownable(initialOwner) {
         sanctuaryAddr = sanctuary;
@@ -75,7 +66,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
     /// @notice Mints an NFT
     /// @param account account to send the NFT
     /// @param id NFT´s id to send
-    function mint(address account, uint256 id) public payable noReentrant {
+    function mint(address account, uint256 id) public payable nonReentrant {
         require(msg.value >= prices[id], "Not enough value sent");
         require(activeIds[id], "Token Id minting is not active");
 
@@ -132,8 +123,9 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable {
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 
-        bool sent = payable(sanctuaryAddr).send(balance);
-        require(sent, "Failed to send Ether");
+        // Using call to send calue
+        (bool sent, ) = payable(sanctuaryAddr).call{value: balance}("");
+        require(sent, "Failed to send value");
     }
 
 }
