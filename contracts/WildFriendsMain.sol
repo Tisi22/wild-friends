@@ -18,18 +18,28 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
 
     mapping(uint256 => bool) activeIds;
 
+    // Event definitions
+    event PriceSet(uint256 indexed id, uint256 price);
+    event URISet(string newURI);
+    event ActiveIdSet(uint256 indexed id, bool isActive);
+    event FeeNumeratorSet(address indexed receiver, uint96 feeNumerator);
+    event SanctuaryAddrSet(address indexed sanctuary);
+    event Withdrawn(address indexed sanctuary, uint256 amount);
+
     constructor(address initialOwner, address sanctuary) ERC1155("") Ownable(initialOwner) {
         sanctuaryAddr = sanctuary;
     }
 
     //----- SET FUNCTIONS -----//
 
-    function SetPrice(uint256 id, uint256 _price) public onlyOwner {
+    function setPrice(uint256 id, uint256 _price) public onlyOwner {
         prices[id] = _price;
+        emit PriceSet(id, _price);
     }
 
     function setURI(string memory newuri) public onlyOwner {
         _uri = newuri;
+        emit URISet(newuri);
     }
 
     /**
@@ -37,6 +47,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
     */
     function setAciveId(uint256 id, bool val) external onlyOwner {
         activeIds[id] = val;
+        emit ActiveIdSet(id, val);
     }
 
     /**
@@ -49,6 +60,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
      */
     function setFeeNum(address receiver, uint96 feeNumerator) public onlyOwner {
         _setDefaultRoyalty(receiver, feeNumerator);
+        emit FeeNumeratorSet(receiver, feeNumerator);
     }
 
     /// @notice Set the address of the Sanctuary
@@ -56,6 +68,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
     /// @param sanctuary The new address
     function SetSanctuaryAddr(address sanctuary) public onlyOwner {
         sanctuaryAddr = sanctuary;
+        emit SanctuaryAddrSet(sanctuary);
     }
 
     //----- END -----//
@@ -87,12 +100,13 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
         public
         onlyOwner
     {
-        require(to.length == ids.length && ids.length == amounts.length, "Please check the args length");
+        require(to.length == ids.length && ids.length == amounts.length, "Array lengths must match");
 
         for (uint i = 0; i < to.length; i++)
         {
             _mint(to[i], ids[i], amounts[i], "");
         }
+
     }
 
     //-----END-----//
@@ -126,6 +140,8 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
         // Using call to send calue
         (bool sent, ) = payable(sanctuaryAddr).call{value: balance}("");
         require(sent, "Failed to send value");
+
+        emit Withdrawn(sanctuaryAddr, balance);
     }
 
 }
