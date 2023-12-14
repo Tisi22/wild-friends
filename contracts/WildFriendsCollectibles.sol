@@ -9,7 +9,10 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {BaseWildFriendsCollectibles} from "./BaseWildFriendsCollectibles.sol";
 
-
+// Sanctuary Interface
+interface ISanctuary {
+    function transfer() external payable returns (bool);
+}
 
 contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGuard {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -49,9 +52,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
         // make sure that the signer is authorized to mint NFTs
         require(hasRole(MINTER_ROLE, signer), "Signature invalid or unauthorized");
 
-        // Using call to send calue
-        (bool sent, ) = payable(sanctuaryAddr).call{value: msg.value}("");
-        require(sent, "Failed to send value");
+        require(ISanctuary(sanctuaryAddr).transfer{value: msg.value}(), "Sanctuary transfer failed");
 
         base.mint(redeemer, voucher.tokenId);
 
@@ -103,9 +104,7 @@ contract WildFriendsCollectibles is EIP712, AccessControl, Ownable, ReentrancyGu
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 
-        // Using call to send calue
-        (bool sent, ) = payable(sanctuaryAddr).call{value: balance}("");
-        require(sent, "Failed to send value");
+        require(ISanctuary(sanctuaryAddr).transfer{value: balance}(), "Sanctuary transfer failed");
     }
 
     // Function to receive Matic. msg.data must be empty

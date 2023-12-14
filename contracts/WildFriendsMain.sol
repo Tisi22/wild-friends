@@ -7,6 +7,11 @@ import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { StringUtils } from "./libraries/StringUtils.sol";
 
+// Sanctuary Interface
+interface ISanctuary {
+    function transfer() external payable returns (bool);
+}
+
 contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
 
     //Mapping for the prices token Id => Price with the 18 decimals
@@ -75,7 +80,6 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
 
     //----- MINT -----//
 
-
     /// @notice Mints an NFT
     /// @param account account to send the NFT
     /// @param id NFT´s id to send
@@ -83,9 +87,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
         require(msg.value >= prices[id], "Not enough value sent");
         require(activeIds[id], "Token Id minting is not active");
 
-        // Using call to send calue
-        (bool sent, ) = payable(sanctuaryAddr).call{value: msg.value}("");
-        require(sent, "Failed to send value");
+        require(ISanctuary(sanctuaryAddr).transfer{value: msg.value}(), "Sanctuary transfer failed");
 
         _mint(account, id, 1, "");
     }
@@ -137,9 +139,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
         uint balance = address(this).balance;
         require(balance > 0, "No Ether left to withdraw");
 
-        // Using call to send calue
-        (bool sent, ) = payable(sanctuaryAddr).call{value: balance}("");
-        require(sent, "Failed to send value");
+        require(ISanctuary(sanctuaryAddr).transfer{value: balance}(), "Sanctuary transfer failed");
 
         emit Withdrawn(sanctuaryAddr, balance);
     }

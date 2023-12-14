@@ -4,9 +4,18 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract PriceShare is Ownable, ReentrancyGuard{
+contract Sanctuary is Ownable, ReentrancyGuard{
 
     address public sanctuary;
+
+    address wildFriendsMainAddress;
+
+    modifier onlyWildFriendsMain() {
+    require(msg.sender == wildFriendsMainAddress, "Caller is not WildFriendsMain");
+    _;
+    }
+
+    event WildFriendsMainAddressSet(address indexed wildFriendsMain);
 
     constructor(address initialOwner, address _sanctuary) Ownable(initialOwner) {
        sanctuary = _sanctuary;
@@ -16,18 +25,28 @@ contract PriceShare is Ownable, ReentrancyGuard{
         sanctuary = _sanctuary;
     }
 
-    function share() private nonReentrant {
-        uint balance = address(this).balance;
-        require(balance > 0, "No Ether left to withdraw");
+    function setWildFriendsMainAddress(address _wildFriendsMainAddress) public onlyOwner {
+        wildFriendsMainAddress = _wildFriendsMainAddress;
+        emit WildFriendsMainAddressSet(_wildFriendsMainAddress);
+    }
 
+    function transfer() public payable onlyWildFriendsMain nonReentrant returns (bool) {
         address _owner = owner();
+        uint value = msg.value / 2;
 
-        (bool sentS, ) = payable(sanctuary).call{value: balance/2}("");
-        require(sentS, "Failed to send value to sanctuary");
+        // First transfer to sanctuary
+        (bool sentS, ) = payable(sanctuary).call{value: value}("");
+        if (!sentS) {
+            return false;
+        }
 
-        (bool sentO, ) = payable(_owner).call{value: balance/2}("");
-        require(sentO, "Failed to send value to owner");
+        // Second transfer to owner
+        (bool sentO, ) = payable(_owner).call{value: msg.value - value}("");
+        if (!sentO) {
+            return false;
+        }
 
+        return true;
     }
 
     /**
@@ -43,11 +62,9 @@ contract PriceShare is Ownable, ReentrancyGuard{
 
     // Function to receive Matic. msg.data must be empty
     receive() external payable {
-        share();
     }
 
     // Fallback function is called when msg.data is not empty
     fallback() external payable {
-        share();
     }
 }

@@ -11,14 +11,21 @@ async function deploy() {
     const basenftAddress = await base.address;
     console.log("Base contract deployed at: ", basenftAddress);
 
+    const factorySanctuary = await ethers.getContractFactory("Sanctuary");
+    const sanctuaryContract = await factorySanctuary.deploy(owner.address, sanctuary.address);
+    const sanctuaryContractAddress = await sanctuaryContract.address;
+    console.log("Sanctuary contract contract deployed at: ", sanctuaryContractAddress);
+
     const minterAddress = await minter.address;
     const ownerAddress = await owner.address;
     const sanctuaryAddress = await sanctuary.address;
 
     const Collectibles = await ethers.getContractFactory("WildFriendsCollectibles");
-    const contract = await Collectibles.deploy(minterAddress, basenftAddress, ownerAddress, sanctuaryAddress);
+    const contract = await Collectibles.deploy(minterAddress, basenftAddress, ownerAddress, sanctuaryContractAddress);
     const collectiblesAddress = await contract.address;
     console.log("Collectibles contract deployed at: ", collectiblesAddress);
+
+    await sanctuaryContract.setWildFriendsMainAddress(collectiblesAddress);
 
     return {
         owner,
@@ -30,7 +37,9 @@ async function deploy() {
         base,
         basenftAddress,
         contract,
-        collectiblesAddress
+        collectiblesAddress,
+        sanctuaryContractAddress,
+        sanctuaryContract
     }
 }
 
@@ -76,13 +85,6 @@ describe("Minting using voucher", function () {
       const redeemerAddress = await redeemer.address;
 
       await base.addController(collectiblesAddress);
-      
-      /*const digest = await collectibles._hash({tokenId});  // Assuming you make this function public for testing purposes
-      const signature = await minter.signMessage(ethers.utils.arrayify(digest));
-      const voucher = {
-        tokenId,
-        signature
-      };*/
 
       await contract.redeemNFTCollectible(redeemerAddress, voucher);
       expect(await base.balanceOf(redeemerAddress, tokenId)).to.equal(1);
