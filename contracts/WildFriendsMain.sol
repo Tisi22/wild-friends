@@ -31,8 +31,16 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
     event SanctuaryAddrSet(address indexed sanctuary);
     event Withdrawn(address indexed sanctuary, uint256 amount);
 
-    constructor(address initialOwner, address sanctuary) ERC1155("") Ownable(initialOwner) {
+    constructor(address initialOwner, address sanctuary, uint256[] memory ids, uint256[] memory _prices) ERC1155("") Ownable(initialOwner) {
         sanctuaryAddr = sanctuary;
+
+        require(ids.length == _prices.length, "Array lengths must match");
+
+        for (uint i = 0; i < ids.length; i++)
+        {
+            setPrice(ids[i], _prices[i]);
+            setAciveId(ids[i], true);
+        }
     }
 
     //----- SET FUNCTIONS -----//
@@ -50,7 +58,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
     /**
     * @dev Activate/diactivate an id
     */
-    function setAciveId(uint256 id, bool val) external onlyOwner {
+    function setAciveId(uint256 id, bool val) public onlyOwner {
         activeIds[id] = val;
         emit ActiveIdSet(id, val);
     }

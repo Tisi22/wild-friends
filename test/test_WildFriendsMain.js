@@ -13,8 +13,12 @@ async function deploy() {
     const ownerAddress = await owner.address;
     const sanctuaryAddress = await sanctuary.address;
 
+    const price1 = ethers.utils.parseUnits("1", "ether");
+    const price2 = ethers.utils.parseUnits("2", "ether");
+    const price3 = ethers.utils.parseUnits("3", "ether");
+
     const factoryWildFriendsMain = await ethers.getContractFactory("WildFriendsMain");
-    const wildFriendsMaincontract = await factoryWildFriendsMain.deploy(ownerAddress, sanctuaryContractAddress);
+    const wildFriendsMaincontract = await factoryWildFriendsMain.deploy(ownerAddress, sanctuaryContractAddress, [1,2,3], [price1, price2, price3]);
     const wildFriendsMaincontractAddress = await wildFriendsMaincontract.address;
     console.log("WildFriendsMain contract deployed at: ", wildFriendsMaincontractAddress);
 

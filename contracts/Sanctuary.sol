@@ -49,6 +49,26 @@ contract Sanctuary is Ownable, ReentrancyGuard{
         return true;
     }
 
+    function _transfer() private nonReentrant returns (bool) {
+        address _owner = owner();
+        uint balance = address(this).balance;
+        uint value = balance / 2;
+
+        // First transfer to sanctuary
+        (bool sentS, ) = payable(sanctuary).call{value: value}("");
+        if (!sentS) {
+            return false;
+        }
+
+        // Second transfer to owner
+        (bool sentO, ) = payable(_owner).call{value: msg.value - value}("");
+        if (!sentO) {
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * @dev Allows the owner to withdraw Ether from the contract.
     */
@@ -62,9 +82,11 @@ contract Sanctuary is Ownable, ReentrancyGuard{
 
     // Function to receive Matic. msg.data must be empty
     receive() external payable {
+        _transfer();
     }
 
     // Fallback function is called when msg.data is not empty
     fallback() external payable {
+        _transfer();
     }
 }
