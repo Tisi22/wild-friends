@@ -101,7 +101,7 @@ contract WildFriendsMain is ERC1155, ERC2981, Ownable, ReentrancyGuard {
     }
   
 
-    /// @notice MInt NFTs for the Airdrop.
+    /// @notice Mint NFTs for the Airdrop.
     /// @dev It can be only calledby the owner
     /// @param to Array of addresses to send the NFTs
     /// @param ids Ids to be sent
